@@ -1,3 +1,4 @@
+// full_history_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../db_helper.dart';
@@ -12,7 +13,8 @@ class FullHistoryPage extends StatefulWidget {
   State<FullHistoryPage> createState() => _FullHistoryPageState();
 }
 
-class _FullHistoryPageState extends State<FullHistoryPage> {
+class _FullHistoryPageState extends State<FullHistoryPage>
+    with SingleTickerProviderStateMixin {
   final DBHelper db = DBHelper.instance;
   final TextEditingController _searchController = TextEditingController();
 
@@ -25,11 +27,22 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
   DateTime? _toDate;
   double? _minAmount;
   double? _maxAmount;
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 60),
+    )..repeat();
     _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -69,14 +82,21 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setDialogState) => AlertDialog(
-            title: const Text("Filter Transactions"),
+            backgroundColor: Colors.grey[900],
+            title: const Text(
+              "Filter Transactions",
+              style: TextStyle(color: Colors.white),
+            ),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     "₹${selectedRange.start.toStringAsFixed(0)} – ₹${selectedRange.end >= sliderMax ? "${sliderMax.toInt()}+" : selectedRange.end.toStringAsFixed(0)}",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   RangeSlider(
                     values: selectedRange,
@@ -96,7 +116,10 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      const Text("From: "),
+                      const Text(
+                        "From:",
+                        style: TextStyle(color: Colors.white70),
+                      ),
                       TextButton(
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -113,13 +136,17 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                           localFrom != null
                               ? DateFormat('d MMM y').format(localFrom!)
                               : 'Any',
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     ],
                   ),
                   Row(
                     children: [
-                      const Text("To: "),
+                      const Text(
+                        "To:",
+                        style: TextStyle(color: Colors.white70),
+                      ),
                       TextButton(
                         onPressed: () async {
                           final picked = await showDatePicker(
@@ -136,6 +163,7 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                           localTo != null
                               ? DateFormat('d MMM y').format(localTo!)
                               : 'Any',
+                          style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     ],
@@ -153,7 +181,10 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                   _maxAmount = null;
                   Navigator.pop(context);
                 },
-                child: const Text("Clear"),
+                child: const Text(
+                  "Clear",
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -172,9 +203,7 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
       },
     );
 
-    if (didApply && mounted) {
-      setState(() {}); // Force rebuild to apply filters
-    }
+    if (didApply && mounted) setState(() {});
   }
 
   List<TransactionRecord> _applyFilters(List<TransactionRecord> txns) {
@@ -219,7 +248,10 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
     final grouped = _groupByDate(filteredAndFiltered);
 
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: const Text("History"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -235,92 +267,221 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (val) => setState(() => _search = val),
+                    style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: "search",
+                      hintStyle: const TextStyle(color: Colors.white54),
                       filled: true,
-                      fillColor: Colors.grey[800],
+                      fillColor: Colors.black26,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Colors.white54,
+                      ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                ElevatedButton(
+                ElevatedButton.icon(
                   onPressed: _showFilterDialog,
-                  child: const Text("filter"),
+                  icon: const Icon(Icons.filter_list),
+                  label: const Text("Filter"),
                 ),
               ],
             ),
           ),
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : grouped.isEmpty
-          ? const Center(child: Text("No transactions found"))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: grouped.entries.map((entry) {
-                final dateLabel = entry.key;
-                final txns = entry.value;
-                final total = txns.fold<double>(
-                  0.0,
-                  (sum, txn) =>
-                      sum + (txn.isPayment ? -txn.amount : txn.amount),
-                );
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 16, bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            dateLabel,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            "₹${total.toStringAsFixed(0)}",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Stack(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color.fromRGBO(0, 49, 80, 0.247),
+                        Colors.black,
+                        Color.fromRGBO(46, 0, 65, 0.102),
+                      ],
                     ),
-                    ...txns.map((txn) {
-                      final user = _userMap[txn.userId];
-                      final label = txn.isPayment
-                          ? "You Owe ₹${txn.amount.toStringAsFixed(2)}"
-                          : "Owe You ₹${txn.amount.toStringAsFixed(2)}";
-
-                      return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        color: Colors.grey[800],
-                        child: ListTile(
-                          title: Text(label),
-                          subtitle: Text(txn.description),
-                          trailing: Text(user?.name ?? 'user'),
-                          onTap: () {
-                            if (user != null) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => UserPage(user: user),
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      );
-                    }),
-                  ],
-                );
-              }).toList(),
+                  ),
+                ),
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (_, child) {
+                    return CustomPaint(
+                      size: MediaQuery.of(context).size,
+                      painter: _StarfieldPainter(_controller.value),
+                    );
+                  },
+                ),
+              ],
             ),
+          ),
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : grouped.isEmpty
+              ? const Center(
+                  child: Text(
+                    "No transactions found",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: grouped.entries.map((entry) {
+                    final dateLabel = entry.key;
+                    final txns = entry.value;
+                    final total = txns.fold<double>(
+                      0.0,
+                      (sum, txn) =>
+                          sum + (txn.isPayment ? -txn.amount : txn.amount),
+                    );
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16, bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                dateLabel,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                "₹${total.toStringAsFixed(0)}",
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ...txns.map((txn) {
+                          final user = _userMap[txn.userId];
+                          final label = txn.isPayment
+                              ? "₹${txn.amount.toStringAsFixed(2)}"
+                              : "₹${txn.amount.toStringAsFixed(2)}";
+
+                          return GestureDetector(
+                            onTap: () {
+                              if (user != null) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => UserPage(user: user),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 6),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withOpacity(0.08),
+                                    Colors.black.withOpacity(0.04),
+                                    Colors.black.withOpacity(0.08),
+                                  ],
+                                ),
+                                border: Border.all(
+                                  color: txn.isPayment
+                                      ? const Color.fromRGBO(255, 0, 0, 0.2)
+                                      : const Color.fromRGBO(16, 185, 129, 0.2),
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        label,
+                                        style: TextStyle(
+                                          color: txn.isPayment
+                                              ? Colors.redAccent
+                                              : Colors.greenAccent,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        DateFormat(
+                                          'dd MMM yyyy',
+                                        ).format(txn.date),
+                                        style: const TextStyle(
+                                          color: Colors.white60,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      txn.description,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    user?.name ?? '',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    );
+                  }).toList(),
+                ),
+        ],
+      ),
     );
   }
+}
+
+class _StarfieldPainter extends CustomPainter {
+  final double progress;
+  _StarfieldPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withOpacity(0.015);
+    for (int i = 0; i < 150; i++) {
+      final dx = (size.width * (i / 150) + progress * 30) % size.width;
+      final dy =
+          (size.height * ((150 - i) / 150) + progress * 15) % size.height;
+      canvas.drawCircle(Offset(dx, dy), 0.7, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

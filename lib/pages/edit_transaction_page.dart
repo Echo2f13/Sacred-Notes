@@ -12,11 +12,13 @@ class EditTransactionPage extends StatefulWidget {
   State<EditTransactionPage> createState() => _EditTransactionPageState();
 }
 
-class _EditTransactionPageState extends State<EditTransactionPage> {
+class _EditTransactionPageState extends State<EditTransactionPage>
+    with SingleTickerProviderStateMixin {
   late TextEditingController _amountController;
   late TextEditingController _descController;
   late DateTime _selectedDate;
   late bool _isPayment;
+  late AnimationController _controller;
 
   @override
   void initState() {
@@ -26,6 +28,18 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     _descController = TextEditingController(text: txn.description);
     _selectedDate = txn.date;
     _isPayment = txn.isPayment;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 60),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _amountController.dispose();
+    _descController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickDate() async {
@@ -72,9 +86,14 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Delete Transaction"),
+        backgroundColor: Colors.grey[900],
+        title: const Text(
+          "Delete Transaction",
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           "Are you sure you want to delete this transaction?",
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -107,60 +126,141 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Edit Transaction")),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: "Amount (₹)"),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text("Edit Transaction"),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Stack(
               children: [
-                const Text("You Owe"),
-                Switch(
-                  value: !_isPayment,
-                  onChanged: (val) => setState(() => _isPayment = !val),
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Color.fromRGBO(0, 49, 80, 0.25),
+                        Colors.black,
+                        Color.fromRGBO(46, 0, 65, 0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
                 ),
-                const Text("Owe You"),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _descController,
-              decoration: const InputDecoration(labelText: "Description"),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("Date: ${DateFormat.yMMMd().format(_selectedDate)}"),
-                TextButton(
-                  onPressed: _pickDate,
-                  child: const Text("Pick Date"),
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (_, child) {
+                    return CustomPaint(
+                      size: MediaQuery.of(context).size,
+                      painter: _StarfieldPainter(_controller.value),
+                    );
+                  },
                 ),
               ],
             ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text("Update"),
-              onPressed: _updateTransaction,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 120, 16, 16),
+            child: ListView(
+              children: [
+                TextFormField(
+                  controller: _amountController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: "Amount (₹)",
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "You Owe",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    Switch(
+                      value: !_isPayment,
+                      activeColor: Colors.greenAccent,
+                      inactiveThumbColor: Colors.redAccent,
+                      inactiveTrackColor: Colors.red[200],
+                      onChanged: (val) => setState(() => _isPayment = !val),
+                    ),
+                    const Text(
+                      "Owe You",
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: "Description",
+                    labelStyle: TextStyle(color: Colors.white70),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Date: ${DateFormat.yMMMd().format(_selectedDate)}",
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    TextButton(
+                      onPressed: _pickDate,
+                      child: const Text("Pick Date"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text("Update"),
+                  onPressed: _updateTransaction,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.delete),
+                  label: const Text("Delete"),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: _deleteTransaction,
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.delete),
-              label: const Text("Delete"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: _deleteTransaction,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _StarfieldPainter extends CustomPainter {
+  final double progress;
+  _StarfieldPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width == 0 || size.height == 0) return;
+
+    final paint = Paint()..color = Colors.white.withOpacity(0.015);
+    for (int i = 0; i < 150; i++) {
+      final dx = (size.width * (i / 150) + progress * 30) % size.width;
+      final dy =
+          (size.height * ((150 - i) / 150) + progress * 15) % size.height;
+      canvas.drawCircle(Offset(dx, dy), 0.7, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }
