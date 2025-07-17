@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../db_helper.dart';
 import '../models/user.dart';
 import '../models/transaction_record.dart';
+import 'users_page.dart';
+import 'edit_transaction_page.dart';
 
 class UserPage extends StatefulWidget {
   final User user;
@@ -60,6 +62,11 @@ class _UserPageState extends State<UserPage> {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
+          TextButton(
+            onPressed: _confirmDeleteUser,
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final newName = nameController.text.trim();
@@ -70,12 +77,8 @@ class _UserPageState extends State<UserPage> {
                   name: newName,
                   mobile: newMobile,
                 );
-                await DBHelper.instance.insertUser(
-                  updatedUser,
-                ); // Uses `insertUser`, which should handle update too
-                setState(() {
-                  _user = updatedUser;
-                });
+                await DBHelper.instance.insertUser(updatedUser);
+                setState(() => _user = updatedUser);
                 Navigator.pop(context);
               }
             },
@@ -134,6 +137,15 @@ class _UserPageState extends State<UserPage> {
                         '${txn.date.day} ${_monthName(txn.date.month)} ${txn.date.year}',
                         style: const TextStyle(fontSize: 12),
                       ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                EditTransactionPage(transaction: txn),
+                          ),
+                        ).then((_) => _loadTransactions());
+                      },
                     ),
                   );
                 }),
@@ -159,5 +171,50 @@ class _UserPageState extends State<UserPage> {
       'Dec',
     ];
     return names[month];
+  }
+
+  void _confirmDeleteUser() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text(
+          'Are you sure you want to delete this user and all their transactions?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // close confirmation
+              await _deleteUserAndTransactions();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteUserAndTransactions() async {
+    final db = DBHelper.instance;
+    final id = _user.id!;
+    final database = await db.database;
+
+    await database.transaction((txn) async {
+      await txn.delete('transactions', where: 'user_id = ?', whereArgs: [id]);
+      await txn.delete('users', where: 'id = ?', whereArgs: [id]);
+    });
+
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const UsersPage()),
+        (route) => route.isFirst,
+      );
+    }
   }
 }

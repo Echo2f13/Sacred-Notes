@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../db_helper.dart';
 import '../models/user.dart';
 import '../models/transaction_record.dart';
+import 'user_page.dart';
 
 class FullHistoryPage extends StatefulWidget {
   const FullHistoryPage({super.key});
@@ -51,98 +52,146 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
   }
 
   Future<void> _showFilterDialog() async {
-    final minController = TextEditingController(
-      text: _minAmount?.toStringAsFixed(2) ?? '',
+    double sliderMin = 0;
+    double sliderMax = 3000;
+    RangeValues selectedRange = RangeValues(
+      _minAmount ?? sliderMin,
+      _maxAmount ?? sliderMax,
     );
-    final maxController = TextEditingController(
-      text: _maxAmount?.toStringAsFixed(2) ?? '',
-    );
+
+    DateTime? localFrom = _fromDate;
+    DateTime? localTo = _toDate;
+
+    bool didApply = false;
 
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Filter Transactions"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Text("From: "),
-                TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _fromDate ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setState(() => _fromDate = picked);
-                  },
-                  child: Text(
-                    _fromDate != null
-                        ? DateFormat.yMd().format(_fromDate!)
-                        : 'Any',
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text("Filter Transactions"),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "₹${selectedRange.start.toStringAsFixed(0)} – ₹${selectedRange.end >= sliderMax ? "${sliderMax.toInt()}+" : selectedRange.end.toStringAsFixed(0)}",
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                const Text("To: "),
-                TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _toDate ?? DateTime.now(),
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) setState(() => _toDate = picked);
-                  },
-                  child: Text(
-                    _toDate != null ? DateFormat.yMd().format(_toDate!) : 'Any',
+                  RangeSlider(
+                    values: selectedRange,
+                    min: sliderMin,
+                    max: sliderMax,
+                    divisions: 60,
+                    labels: RangeLabels(
+                      "₹${selectedRange.start.toStringAsFixed(0)}",
+                      "₹${selectedRange.end.toStringAsFixed(0)}",
+                    ),
+                    onChanged: (range) {
+                      setDialogState(() {
+                        selectedRange = range;
+                      });
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text("From: "),
+                      TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: localFrom ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => localFrom = picked);
+                          }
+                        },
+                        child: Text(
+                          localFrom != null
+                              ? DateFormat('d MMM y').format(localFrom!)
+                              : 'Any',
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      const Text("To: "),
+                      TextButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: localTo ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => localTo = picked);
+                          }
+                        },
+                        child: Text(
+                          localTo != null
+                              ? DateFormat('d MMM y').format(localTo!)
+                              : 'Any',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-            TextField(
-              controller: minController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: "Min Amount"),
-            ),
-            TextField(
-              controller: maxController,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: "Max Amount"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _fromDate = null;
-                _toDate = null;
-                _minAmount = null;
-                _maxAmount = null;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Clear"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  didApply = true;
+                  _fromDate = null;
+                  _toDate = null;
+                  _minAmount = null;
+                  _maxAmount = null;
+                  Navigator.pop(context);
+                },
+                child: const Text("Clear"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  didApply = true;
+                  _fromDate = localFrom;
+                  _toDate = localTo;
+                  _minAmount = selectedRange.start;
+                  _maxAmount = selectedRange.end;
+                  Navigator.pop(context);
+                },
+                child: const Text("Apply"),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _minAmount = double.tryParse(minController.text.trim());
-                _maxAmount = double.tryParse(maxController.text.trim());
-              });
-              Navigator.pop(context);
-            },
-            child: const Text("Apply"),
-          ),
-        ],
-      ),
+        );
+      },
     );
+
+    if (didApply && mounted) {
+      setState(() {}); // Force rebuild to apply filters
+    }
+  }
+
+  List<TransactionRecord> _applyFilters(List<TransactionRecord> txns) {
+    return txns.where((txn) {
+      final amt = txn.amount;
+      final date = txn.date;
+
+      final matchesAmount =
+          (_minAmount == null || amt >= _minAmount!) &&
+          (_maxAmount == null || amt <= _maxAmount!);
+
+      final matchesDate =
+          (_fromDate == null || !date.isBefore(_fromDate!)) &&
+          (_toDate == null || !date.isAfter(_toDate!));
+
+      return matchesAmount && matchesDate;
+    }).toList();
   }
 
   Map<String, List<TransactionRecord>> _groupByDate(
@@ -154,22 +203,6 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
       grouped.putIfAbsent(dateStr, () => []).add(txn);
     }
     return grouped;
-  }
-
-  List<TransactionRecord> _applyFilters(List<TransactionRecord> txns) {
-    return txns.where((txn) {
-      final amt = txn.amount;
-      final date = txn.date;
-
-      final matchesAmount =
-          (_minAmount == null || amt >= _minAmount!) &&
-          (_maxAmount == null || amt <= _maxAmount!);
-      final matchesDate =
-          (_fromDate == null || !date.isBefore(_fromDate!)) &&
-          (_toDate == null || !date.isAfter(_toDate!));
-
-      return matchesAmount && matchesDate;
-    }).toList();
   }
 
   @override
@@ -270,10 +303,17 @@ class _FullHistoryPageState extends State<FullHistoryPage> {
                         child: ListTile(
                           title: Text(label),
                           subtitle: Text(txn.description),
-                          trailing: Text(
-                            user?.name ?? 'user',
-                            style: const TextStyle(fontWeight: FontWeight.w500),
-                          ),
+                          trailing: Text(user?.name ?? 'user'),
+                          onTap: () {
+                            if (user != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => UserPage(user: user),
+                                ),
+                              );
+                            }
+                          },
                         ),
                       );
                     }),
