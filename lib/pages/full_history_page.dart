@@ -107,11 +107,8 @@ class _FullHistoryPageState extends State<FullHistoryPage>
                       "₹${selectedRange.start.toStringAsFixed(0)}",
                       "₹${selectedRange.end.toStringAsFixed(0)}",
                     ),
-                    onChanged: (range) {
-                      setDialogState(() {
-                        selectedRange = range;
-                      });
-                    },
+                    onChanged: (range) =>
+                        setDialogState(() => selectedRange = range),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -128,9 +125,8 @@ class _FullHistoryPageState extends State<FullHistoryPage>
                             firstDate: DateTime(2020),
                             lastDate: DateTime.now(),
                           );
-                          if (picked != null) {
+                          if (picked != null)
                             setDialogState(() => localFrom = picked);
-                          }
                         },
                         child: Text(
                           localFrom != null
@@ -155,9 +151,8 @@ class _FullHistoryPageState extends State<FullHistoryPage>
                             firstDate: DateTime(2020),
                             lastDate: DateTime.now(),
                           );
-                          if (picked != null) {
+                          if (picked != null)
                             setDialogState(() => localTo = picked);
-                          }
                         },
                         child: Text(
                           localTo != null
@@ -248,7 +243,7 @@ class _FullHistoryPageState extends State<FullHistoryPage>
     final grouped = _groupByDate(filteredAndFiltered);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF1C1C28),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -272,7 +267,7 @@ class _FullHistoryPageState extends State<FullHistoryPage>
                       hintText: "search",
                       hintStyle: const TextStyle(color: Colors.white54),
                       filled: true,
-                      fillColor: Colors.black26,
+                      fillColor: Colors.white12,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -297,191 +292,171 @@ class _FullHistoryPageState extends State<FullHistoryPage>
       ),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Stack(
-              children: [
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color.fromRGBO(0, 49, 80, 0.247),
-                        Colors.black,
-                        Color.fromRGBO(46, 0, 65, 0.102),
-                      ],
+          if (_minAmount != null ||
+              _maxAmount != null ||
+              _fromDate != null ||
+              _toDate != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  const Text(
+                    'Filters Active',
+                    style: TextStyle(
+                      color: Colors.amberAccent,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (_, child) {
-                    return CustomPaint(
-                      size: MediaQuery.of(context).size,
-                      painter: _StarfieldPainter(_controller.value),
-                    );
-                  },
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.white12,
+                      foregroundColor: Colors.redAccent,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => setState(() {
+                      _minAmount = null;
+                      _maxAmount = null;
+                      _fromDate = null;
+                      _toDate = null;
+                    }),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text("Clear"),
+                  ),
+                ],
+              ),
             ),
-          ),
+
           _loading
               ? const Center(child: CircularProgressIndicator())
               : grouped.isEmpty
               ? const Center(
                   child: Text(
-                    "No transactions found",
-                    style: TextStyle(color: Colors.white),
+                    "No transactions match your filters",
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
                   ),
                 )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: grouped.entries.map((entry) {
-                    final dateLabel = entry.key;
-                    final txns = entry.value;
-                    final total = txns.fold<double>(
-                      0.0,
-                      (sum, txn) =>
-                          sum + (txn.isPayment ? -txn.amount : txn.amount),
-                    );
+              : AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: ListView(
+                    key: ValueKey(grouped.length),
+                    padding: const EdgeInsets.all(16),
+                    children: grouped.entries.map((entry) {
+                      final dateLabel = entry.key;
+                      final txns = entry.value;
+                      final total = txns.fold<double>(
+                        0.0,
+                        (sum, txn) =>
+                            sum + (txn.isPayment ? -txn.amount : txn.amount),
+                      );
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16, bottom: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                dateLabel,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                "₹${total.toStringAsFixed(0)}",
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        ...txns.map((txn) {
-                          final user = _userMap[txn.userId];
-                          final label = txn.isPayment
-                              ? "₹${txn.amount.toStringAsFixed(2)}"
-                              : "₹${txn.amount.toStringAsFixed(2)}";
-
-                          return GestureDetector(
-                            onTap: () {
-                              if (user != null) {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => UserPage(user: user),
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16, bottom: 8),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  dateLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                );
-                              }
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.black.withOpacity(0.08),
-                                    Colors.black.withOpacity(0.04),
-                                    Colors.black.withOpacity(0.08),
-                                  ],
                                 ),
-                                border: Border.all(
-                                  color: txn.isPayment
-                                      ? const Color.fromRGBO(255, 0, 0, 0.2)
-                                      : const Color.fromRGBO(16, 185, 129, 0.2),
+                                Text(
+                                  "₹${total.toStringAsFixed(0)}",
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        label,
-                                        style: TextStyle(
-                                          color: txn.isPayment
-                                              ? Colors.redAccent
-                                              : Colors.greenAccent,
-                                          fontWeight: FontWeight.bold,
+                              ],
+                            ),
+                          ),
+                          ...txns.map((txn) {
+                            final user = _userMap[txn.userId];
+                            final label = "₹${txn.amount.toStringAsFixed(2)}";
+
+                            return GestureDetector(
+                              onTap: () {
+                                if (user != null) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => UserPage(user: user),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 6),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          label,
+                                          style: TextStyle(
+                                            color: txn.isPayment
+                                                ? Colors.redAccent
+                                                : Colors.greenAccent,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        DateFormat(
-                                          'dd MMM yyyy',
-                                        ).format(txn.date),
+                                        Text(
+                                          DateFormat(
+                                            'dd MMM yyyy',
+                                          ).format(txn.date),
+                                          style: const TextStyle(
+                                            color: Colors.white60,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        txn.description,
+                                        textAlign: TextAlign.center,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(
-                                          color: Colors.white60,
+                                          color: Colors.white70,
                                           fontSize: 12,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      txn.description,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Text(
+                                      user?.name ?? '',
                                       style: const TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    user?.name ?? '',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
-                      ],
-                    );
-                  }).toList(),
+                            );
+                          }),
+                        ],
+                      );
+                    }).toList(),
+                  ),
                 ),
         ],
       ),
     );
   }
-}
-
-class _StarfieldPainter extends CustomPainter {
-  final double progress;
-  _StarfieldPainter(this.progress);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = Colors.white.withOpacity(0.015);
-    for (int i = 0; i < 150; i++) {
-      final dx = (size.width * (i / 150) + progress * 30) % size.width;
-      final dy =
-          (size.height * ((150 - i) / 150) + progress * 15) % size.height;
-      canvas.drawCircle(Offset(dx, dy), 0.7, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => true;
 }

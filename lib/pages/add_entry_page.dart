@@ -86,10 +86,8 @@ class _AddEntryPageState extends State<AddEntryPage>
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text(
-          "Add Entry",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
+        title: const Text("Add Entry",
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         elevation: 0,
       ),
       body: Stack(
@@ -101,9 +99,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color.fromRGBO(0, 49, 80, 0.247),
+                    Color.fromRGBO(0, 49, 80, 0.25),
                     Colors.black,
-                    Color.fromRGBO(46, 0, 65, 0.102),
+                    Color.fromRGBO(46, 0, 65, 0.1),
                   ],
                 ),
               ),
@@ -121,153 +119,158 @@ class _AddEntryPageState extends State<AddEntryPage>
           _loading
               ? const Center(child: CircularProgressIndicator())
               : _users.isEmpty
-              ? const Center(
-                  child: Text(
-                    "No users found. Add a user first.",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      children: [
-                        DropdownButtonFormField<User>(
-                          value: _selectedUser,
-                          dropdownColor: Colors.grey[900],
-                          style: const TextStyle(color: Colors.white),
-                          items: _users
-                              .map(
-                                (u) => DropdownMenuItem(
-                                  value: u,
-                                  child: Text(
-                                    '${u.name} (${u.mobile})',
-                                    style: const TextStyle(color: Colors.white),
+                  ? const Center(
+                      child: Text(
+                        "No users found. Add a user first.",
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 100, 16, 16),
+                      child: Form(
+                        key: _formKey,
+                        child: ListView(
+                          children: [
+                            DropdownButtonFormField<User>(
+                              value: _selectedUser,
+                              dropdownColor: Colors.grey[900],
+                              style: const TextStyle(color: Colors.white),
+                              items: _users
+                                  .map(
+                                    (u) => DropdownMenuItem(
+                                      value: u,
+                                      child: Text(
+                                        '${u.name} (${u.mobile})',
+                                        style: const TextStyle(
+                                            color: Colors.white),
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (val) =>
+                                  setState(() => _selectedUser = val),
+                              decoration: const InputDecoration(
+                                labelText: "Select User",
+                                labelStyle:
+                                    TextStyle(color: Colors.white60),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Colors.white54),
+                                ),
+                              ),
+                              validator: (val) =>
+                                  val == null ? 'Select a user' : null,
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _amountController,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                decimal: true,
+                              ),
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: "Amount (₹)",
+                                labelStyle: TextStyle(color: Colors.white60),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Colors.white54),
+                                ),
+                              ),
+                              validator: (val) {
+                                if (val == null || val.trim().isEmpty) {
+                                  return "Enter amount";
+                                }
+                                if (double.tryParse(val) == null) {
+                                  return "Invalid number";
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "You Owe",
+                                  style: TextStyle(
+                                    color: !_isPayment
+                                        ? Colors.white38
+                                        : Colors.redAccent,
+                                    fontWeight: _isPayment
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
                                   ),
                                 ),
-                              )
-                              .toList(),
-                          onChanged: (val) =>
-                              setState(() => _selectedUser = val),
-                          decoration: const InputDecoration(
-                            labelText: "Select User",
-                            labelStyle: TextStyle(color: Colors.white60),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.white54),
+                                Switch(
+                                  activeColor: Colors.greenAccent,
+                                  inactiveThumbColor: Colors.redAccent,
+                                  inactiveTrackColor:
+                                      Colors.red.withOpacity(0.5),
+                                  value: !_isPayment,
+                                  onChanged: (val) =>
+                                      setState(() => _isPayment = !val),
+                                ),
+                                Text(
+                                  "Owe You",
+                                  style: TextStyle(
+                                    color: !_isPayment
+                                        ? Colors.greenAccent
+                                        : Colors.white38,
+                                    fontWeight: _isPayment
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          validator: (val) =>
-                              val == null ? 'Select a user' : null,
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _amountController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            labelText: "Amount (₹)",
-                            labelStyle: TextStyle(color: Colors.white60),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.white54),
-                            ),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) {
-                              return "Enter amount";
-                            }
-                            if (double.tryParse(val) == null) {
-                              return "Invalid number";
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "You Owe",
-                              style: TextStyle(
-                                color: !_isPayment
-                                    ? Colors.white38
-                                    : Colors.redAccent,
-                                fontWeight: _isPayment
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _descController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: const InputDecoration(
+                                labelText: "Description",
+                                labelStyle: TextStyle(color: Colors.white60),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Colors.white54),
+                                ),
                               ),
+                              validator: (val) =>
+                                  val == null || val.trim().isEmpty
+                                      ? "Enter description"
+                                      : null,
                             ),
-                            Switch(
-                              activeColor: Colors.greenAccent,
-                              inactiveThumbColor: Colors.redAccent,
-                              inactiveTrackColor: Colors.red.withOpacity(0.5),
-                              value: !_isPayment,
-                              onChanged: (val) =>
-                                  setState(() => _isPayment = !val),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Date: ${DateFormat.yMMMd().format(_selectedDate)}",
+                                  style:
+                                      const TextStyle(color: Colors.white70),
+                                ),
+                                TextButton(
+                                  onPressed: _pickDate,
+                                  child: const Text("Pick Date"),
+                                ),
+                              ],
                             ),
-                            Text(
-                              "Owe You",
-                              style: TextStyle(
-                                color: !_isPayment
-                                    ? Colors.greenAccent
-                                    : Colors.white38,
-                                fontWeight: _isPayment
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              label: const Text("Save"),
+                              icon: const Icon(Icons.check),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.greenAccent,
+                                foregroundColor: Colors.black,
                               ),
+                              onPressed: _saveTransaction,
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _descController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
-                            labelText: "Description",
-                            labelStyle: TextStyle(color: Colors.white60),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: BorderSide(color: Colors.white54),
-                            ),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty
-                              ? "Enter description"
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Date: ${DateFormat.yMMMd().format(_selectedDate)}",
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                            TextButton(
-                              onPressed: _pickDate,
-                              child: const Text("Pick Date"),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton.icon(
-                          label: const Text("Save"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(
-                              255,
-                              37,
-                              235,
-                              57,
-                            ),
-                            foregroundColor: Colors.black,
-                          ),
-                          onPressed: _saveTransaction,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
         ],
       ),
     );
